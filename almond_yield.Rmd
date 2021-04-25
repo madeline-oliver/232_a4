@@ -1,0 +1,89 @@
+---
+title: "Assignment 4 - Almond Model Sensitivity Analysis"
+author: "Madeline Oliver"
+date: "4/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=FALSE}
+# load packages
+library(tidyverse)
+library(dplyr)
+library(ggpubr)
+
+library(sensitivity)
+library(pse)
+library(gridExtra)
+
+```
+
+```{r, include=FALSE}
+#use `read_delim` to read in clim.txt file
+
+climate_data_df <- read_delim("clim.txt", delim = " ")
+
+climate_data_df
+
+# call in function
+source("almond_yield_model_var.R")
+# Apply the function
+yield_list = almond_yield_model_var(climate_data_df = climate_data_df)
+
+```
+
+```{r}
+# Perform latin hypercube sensitivity analysis of the 2 coefficients on precipitation
+
+# names of our parameters
+factors = c("coeff_p","coeff_p2")
+
+# type of distributions they arise from (uniform distribution)
+q = c("qunif", "qunif")
+
+# parameters for those distributions
+q.arg = list(list(min = (-0.07-(0.07*.2)), max = (-0.07+(0.07*.2))), 
+             list(min = (0.0043-(0.0043*.2)), max = (0.0043+(0.0043*.2))))
+
+# decide how many parameter sets to run
+nsets = 200
+
+sens_precip = LHS(NULL, factors, nsets, q, q.arg) 
+
+sens.precip = get.data(sens_precip)
+head(sens.precip)
+
+
+# Create scatter plot of how output changed with parameter uncertainty
+ggplot(sens.precip, aes(x=coeff_p, y=coeff_p2))+geom_point()
+
+
+# create a plot of the PRCC
+
+# run the model
+sens_res = almond_yield_model_var(climate_data_df = climate_data_df,
+                                  ceoff_p=sens.precip$coeff_p,
+                                  coeff_p2=sens.precip$coeff_p2)
+
+sens_Catm = tell(sens_Catm, sens_res, res.names="ga") # ga is conductance
+plotscatter(sens_Catm)
+
+# note it can take standard R plotting parameters
+plotscatter(sens_Catm, col="darkgreen", cex=5, ylab="Atm Conductance (mm/s)")
+
+# whats is the range of results
+
+plotecdf(sens_Catm, col="red", lwd=5, xlab="Atm Conductance (mm/s)")
+
+
+```
+
+
+
+
+
+
+ 
